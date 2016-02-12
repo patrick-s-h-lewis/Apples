@@ -100,7 +100,7 @@ class MongoIter(DocumentIter):
     
     def __init__(self,db_conn,query,sanit,iter_type='SIMPLE'):
         self.sanitiser=sanit
-        self.source=MongoClient(db_conn)
+        self.source=MongoClient(db_conn[0])[db_conn[1]][db_conn[2]]
         self.query=query
         self.size=self.source.find(query).count()
         self.iter_type=iter_type
@@ -116,7 +116,7 @@ class MongoIter(DocumentIter):
                 progress(ind,self.size)
             doc.append(self.sanitiser.sanitise(title).split())
             for sent in abstract_sents:
-                doc.append(self.sanitise.sanitise(sent).split())
+                doc.append(self.sanitiser.sanitise(sent).split())
             if self.iter_type=='DOC':
                 yield doc
             elif self.iter_type=='SIMPLE': 
