@@ -5,6 +5,7 @@ import sys
 import pymongo
 from pymongo import MongoClient
 import sanitisers
+import gensim
 
 def progress(ind,size):
     percent = int(100*float(ind)/size)
@@ -179,7 +180,7 @@ class BlueberryIter(DocumentIter):
     sanitiser=None
     iter_type='SIMPLE'
     
-    def __init__(self,db_conn,query=None,sanit=None,iter_type='SIMPLE',from_list=[]):
+    def __init__(self,db_conn,query=None,sanit=None,iter_type='SIMPLE',from_list=None):
         if sanit:
             self.sanitiser=sanit
         else:
@@ -191,7 +192,7 @@ class BlueberryIter(DocumentIter):
     
     def __iter__(self):
         ind=0
-        if from_list==[]:
+        if from_list!=None:
             for record in self.source.find(self.query):
                 doc = record['doc']
                 doi = record['doi']
@@ -228,4 +229,46 @@ class BlueberryIter(DocumentIter):
                     pass
         print('\n')
 
+class JsonBlueberryIter(DocumentIter):
+    size=0
+    source=''
+    sanitiser=None
+    iter_type='SIMPLE'
+    
+    def __init__(self,filename,sanit=None,iter_type='SIMPLE'):
+        if sanit:
+            self.sanitiser=sanit
+        else:
+            self.sanitiser=sanitisers.NullSanitiser()
+        self.source=filename
+        ind=0
+        for line in codecs.open(filename,'r',encoding='utf8'):
+            ind+=1
+        self.size=ind
+        self.iter_type=iter_type
+        
+    def __iter__(self):
+        ind=0
+        for line in codecs.open(self.source,'r',encoding='utf8'):
+            record = json.loads(line)
+            doi = record['doi']
+            doc = record['record']
+            ind+=1
+            if ind%1000==0:
+                progress(ind,self.size)
+            if self.iter_type=='DOC':
+                yield doc
+            elif self.iter_type=='SIMPLE': 
+                yield [word for sent in doc for word in sent]
+            elif self.iter_type=='SENTENCES':
+                for sent in doc:
+                    yield sent
+            elif self.iter_type=='DOI':
+                yield {'doi':record['doi'],'doc':doc}
+            elif self.iter_type=='LABELED_SENTENCES':
+                for sent in doc:
+                    yield gensim.models.doc2vec.LabeledSentence(sent,tags=[doi])
+            else:
+                pass
+        print('\n')
     
