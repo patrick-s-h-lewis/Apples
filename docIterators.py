@@ -87,9 +87,13 @@ class JsonDiskIter(DocumentIter):
                 yield doc
             elif self.iter_type=='SIMPLE': 
                 yield [word for sent in doc for word in sent]
-            else:
+            elif self.iter_type=='SENTENCES':
                 for sent in doc:
                     yield sent
+            elif self.iter_type=='DOI':
+                yield {'doi':record['doi'],'document':doc}
+            else:
+                pass
         print('\n')
         
 class MongoIter(DocumentIter):
@@ -115,15 +119,19 @@ class MongoIter(DocumentIter):
             if ind%1000==0:
                 progress(ind,self.size)
             doc.append(self.sanitiser.sanitise(title).split())
-            for sent in abstract_sents:
+            for sent in abstract_sents.split('u. '):
                 doc.append(self.sanitiser.sanitise(sent).split())
             if self.iter_type=='DOC':
                 yield doc
             elif self.iter_type=='SIMPLE': 
                 yield [word for sent in doc for word in sent]
-            else:
+            elif self.iter_type=='SENTENCES':
                 for sent in doc:
                     yield sent
+            elif self.iter_type=='DOI':
+                yield {'doi':record['doi'],'document':doc}
+            else:
+                pass
         print('\n')
             
 class SimpleMemorySentIter(DocumentIter):
