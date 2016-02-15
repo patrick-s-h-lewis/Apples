@@ -4,6 +4,7 @@ import codecs
 import docIterators
 import sanitisers
 import gensim
+import random
 
 class Corpus(object):
     doc_iter=None
@@ -52,6 +53,25 @@ class Corpus(object):
                 ex = json.dumps([doc,weights])
                 f.write(ex+'\n')
         print('EXPORT COMPLETE')
+    
+    def get_sample(self,sample_size,return_type='DOI',doc_iter=None):
+        print('Sampling '+str(sample_size)+' random documents')
+        randoms = [random.randint(0,self.doc_iter.size) for i in range(sample_size)]
+        randoms=list(set(randoms))#remove duplicates
+        while len(randoms)<sample_size:#top up random sample to required size
+            top_up = random.randint(0,self.doc_iter.size)
+            if not(top_up in randoms):randoms.append(top_up)
+        sample=[]
+        ind=0
+        if doc_iter==None:
+           self.doc_iter.iter_type=return_type
+           doc_iter=self.doc_iter
+        for record in doc_iter:
+            if ind in randoms:
+                sample.append(record)
+            ind+=1
+        return sample
+        
         
 def load_corpus(source,name='UNTITLED',dictionary_file=None,tfidf_file=None):
     san = sanitisers.NullSanitiser()

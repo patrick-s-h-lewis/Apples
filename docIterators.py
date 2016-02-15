@@ -4,6 +4,7 @@ import json
 import sys
 import pymongo
 from pymongo import MongoClient
+import sanitisers
 
 def progress(ind,size):
     percent = int(100*float(ind)/size)
@@ -39,9 +40,12 @@ class SimpleDiskIter(DocumentIter):
     sanitiser=None
     iter_type='SIMPLE'
 
-    def __init__(self,txf,sanit):
+    def __init__(self,txf,sanit=None):
         self.source=txf
-        self.sanitiser=sanit
+        if sanit:
+            self.sanitiser=sanit
+        else: 
+            self.sanitiser=sanitisers.NullSanitiser()
         ind=0
         for line in codecs.open(txf,'r',encoding='utf8'):
             ind+=1
@@ -60,9 +64,12 @@ class JsonDiskIter(DocumentIter):
     sanitiser=None
     iter_type='SIMPLE'
     
-    def __init__(self,txf,sanit,iter_type='SIMPLE'):
+    def __init__(self,txf,sanit=None,iter_type='SIMPLE'):
         self.source=txf
-        self.sanitiser=sanit
+        if sanit:
+            self.sanitiser=sanit
+        else: 
+            self.sanitiser=sanitisers.NullSanitiser()
         ind=0
         for line in codecs.open(txf,'r',encoding='utf8'):
             ind+=1
@@ -102,8 +109,11 @@ class MongoIter(DocumentIter):
     sanitiser=None
     iter_type='SIMPLE'
     
-    def __init__(self,db_conn,query,sanit,iter_type='SIMPLE'):
-        self.sanitiser=sanit
+    def __init__(self,db_conn,query,sanit=None,iter_type='SIMPLE'):
+        if sanit:
+            self.sanitiser=sanit
+        else: 
+            self.sanitiser=sanitisers.NullSanitiser()
         self.source=MongoClient(db_conn[0])[db_conn[1]][db_conn[2]]
         self.query=query
         self.size=self.source.find(query).count()
@@ -140,10 +150,13 @@ class SimpleMemorySentIter(DocumentIter):
     sanitiser=None
     iter_type="SIMPLE"
     
-    def __init__(self,source,sanit):
+    def __init__(self,source,sanit=None):
         self.size = len(source)
         self.source=source
-        self.sanitser=sanit
+        if sanit:
+            self.sanitiser=sanit
+        else: 
+            self.sanitiser=sanitisers.NullSanitiser()
         
     def __iter(self):
         ind=0
@@ -153,3 +166,66 @@ class SimpleMemorySentIter(DocumentIter):
                 progress(ind,self.size)
             yield [self.sanitiser(record).split()]
         print('\n')
+
+class BlueBerryIter(DocumentIter):
+    size=0
+    source=''
+    sanitiser=None
+    iter_type='SIMPLE'
+
+class BlueberryIter(DocumentIter):
+    size=0
+    source=''
+    sanitiser=None
+    iter_type='SIMPLE'
+    
+    def __init__(self,db_conn,query=None,sanit=None,iter_type='SIMPLE',from_list=[]):
+        if sanit:
+            self.sanitiser=sanit
+        else:
+            self.sanitiser=sanitisers.NullSanitiser()
+        self.source=MongoClient(db_conn[0])[db_conn[1]][db_conn[2]]
+        self.query=query
+        self.size=self.source.find(query).count()
+        self.iter_type=iter_type
+    
+    def __iter__(self):
+        ind=0
+        if from_list==[]:
+            for record in self.source.find(self.query):
+                doc = record['doc']
+                doi = record['doi']
+                ind+=1
+                if ind%1000==0:
+                    progress(ind,self.size)
+                if self.iter_type=='DOC':
+                    yield doc
+                elif self.iter_type=='SIMPLE': 
+                    yield [word for sent in doc for word in sent]
+                elif self.iter_type=='SENTENCES':
+                    for sent in doc:
+                        yield sent
+                elif self.iter_type=='DOI':
+                    yield {'doi':record['doi'],'doc':doc}
+                else:
+                    pass
+        else:
+            for doi in from_list:
+                doc=self.source.find_one({'doi':doi})['doc']
+                ind+=1
+                if ind%1000==0:
+                    progress(ind,self.size)
+                if self.iter_type=='DOC':
+                    yield doc
+                elif self.iter_type=='SIMPLE': 
+                    yield [word for sent in doc for word in sent]
+                elif self.iter_type=='SENTENCES':
+                    for sent in doc:
+                        yield sent
+                elif self.iter_type=='DOI':
+                    yield {'doi':record['doi'],'doc':doc}
+                else:
+                    pass
+        print('\n')
+
+    
