@@ -236,6 +236,9 @@ class BlueberryIter(DocumentIter):
                     pass
         print('\n')
 
+    def get_record(self,doi):
+        return self.source.find_one({'doi':doi})  
+
 class JsonBlueberryIter(DocumentIter):
     size=0
     source=''

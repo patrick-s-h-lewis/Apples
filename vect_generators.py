@@ -42,7 +42,7 @@ class RaspberryGenerator(VectorGenerator):
 	    divisor=1 #stop division by zero
         return acc/divisor
 
-class BlueberryGenerator(VectorGenerator):
+class BlueberryWordGenerator(VectorGenerator):
     model = {}
     dimensionality=0
     
@@ -69,6 +69,40 @@ class BlueberryGenerator(VectorGenerator):
         if divisor==0:
             divisor=1. #stop division by zero
         return acc/divisor
+
+class BlueberrySentGenerator(VectorGenerator):
+    model = {}
+    dimensionality=0
+    
+    def __init__(self,model):
+        self.model=model
+        self.dimensionality=model.vector_size
+        
+    def get_vector(self,doc,weights=None):
+        acc=np.zeros(self.dimensionality)
+        divisor = 0
+        doc = filter(lambda x: x != [], doc)
+        if weights==None:
+            weights = [[1. for w in s] for s in doc]
+        sent_no = len(doc)
+        for i in range(sent_no):
+            sent = doc[i]
+            weight= weights[i]
+            sent_acc=np.zeros(self.dimensionality)
+            sent_divisor=0
+            for j in range(len(sent)):
+                try:
+                    sent_acc+=weight[j]*(self.model[sent[j]])
+                    sent_divisor+=weight[j]
+                except:
+                    pass
+            if sent_divisor==0:
+                sent_divisor=1 #stop division by zero
+            acc+=(sent_acc/sent_divisor)
+            divisor+=1
+        if divisor==0:
+            divisor=1. #stop division by zero
+        return acc/divisor
     
 class RhubarbGenerator(VectorGenerator):
     model = {}
@@ -91,6 +125,16 @@ class RhubarbGenerator(VectorGenerator):
             divisor=1 #stop division by zero
         return acc/divisor
 
+class Doc2VecGenerator(VectorGenerator):
+    model = {}
+    dimensionality=0
+     
+    def __init__(self,model):
+        self.model=model
+        self.dimensionality=model.vector_size
+     
+    def get_vector(self,doi):
+        return self.model.docvecs[doi]
      
   
 

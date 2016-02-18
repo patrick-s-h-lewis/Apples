@@ -5,6 +5,7 @@ import docIterators
 import sanitisers
 import gensim
 import random
+import json
 
 class Corpus(object):
     doc_iter=None
@@ -20,7 +21,10 @@ class Corpus(object):
         if dictionary:
             self.dictionary=dictionary
         else:
+            iter_type=doc_iter.iter_type
+            self.doc_iter.iter_type='SIMPLE'
             self.dictionary = corpora.Dictionary(doc_iter)
+            self.doc_iter.iter_type=iter_type
         self.inv_dict = {v:k for k,v in self.dictionary.iteritems()}
         self.name=name
         if tfidf_model:
@@ -43,14 +47,24 @@ class Corpus(object):
         if self.tfidf_model==None:
             self.tfidf_model=self.get_tfidf_model()
         with codecs.open(self.name+filename,'w',encoding='utf8') as f:
-            self.doc_iter.iter_type='DOC'
+            self.doc_iter.iter_type='DOI'
             for doc in self.doc_iter:
-                weights=[]
-                for sent in doc:
-                    if sent!=[]:
-                        tfidf=self.get_tfidf_doc(sent)
-                        weights.append(map( lambda w: tfidf[zip(*tfidf)[0].index(self.inv_dict[w])][1],sent))
-                ex = json.dumps([doc,weights])
+                doc_weights=[]
+                sent_weights=[]
+                sents=doc['doc']
+                words=[word for sent in sents for word in sent]
+                #get doc tfidf weights
+                doc_tfidf=self.get_tfidf_doc(words)
+                doc_tfdict={k[0]:k[1] for k in doc_tfidf}
+                for i in range(len(doc['doc'])):
+                    doc_weights.append([doc_tfdict[self.inv_dict[j]] for j in doc['doc'][i]])
+                #get sent tfidf weights
+                for sent in sents:
+                    sent_tfidf=self.get_tfidf_doc(sent)
+                    sent_tfdict={k[0]:k[1] for k in sent_tfidf}
+                    weight=[sent_tfdict[self.inv_dict[word]] for word in sent]
+                    sent_weights.append(weight)
+                ex = json.dumps({'doi':doc['doi'],'tfidf-doc-weights':doc_weights,'tfidf-sent-weights':sent_weights})
                 f.write(ex+'\n')
         print('EXPORT COMPLETE')
     
@@ -71,17 +85,3 @@ class Corpus(object):
                 sample.append(record)
             ind+=1
         return sample
-        
-        
-def load_corpus(source,name='UNTITLED',dictionary_file=None,tfidf_file=None):
-    san = sanitisers.NullSanitiser()
-    dcit = docIterators.JsonDiskIter(source,san)
-    if dictionary_file:
-        dictionary=corpora.Dictionary.load(dictionary_file)
-    else:
-        dictionary=None
-    if tfidf_file:
-        tfidf = models.TfidfModel.load(tfidf_file)
-    else:
-        tfidf=None
-    return Corpus(name,dcit,dictionary=dictionary,tfidf_model=tfidf)
