@@ -189,10 +189,11 @@ class BlueberryIter(DocumentIter):
         self.query=query
         self.size=self.source.find(query).count()
         self.iter_type=iter_type
+        self.from_list=from_list
     
     def __iter__(self):
         ind=0
-        if from_list!=None:
+        if self.from_list==None:
             for record in self.source.find(self.query):
                 doc = record['doc']
                 doi = record['doi']
@@ -208,10 +209,13 @@ class BlueberryIter(DocumentIter):
                         yield sent
                 elif self.iter_type=='DOI':
                     yield {'doi':record['doi'],'doc':doc}
+                elif self.iter_type=='LABELED_SENTENCES':
+                    for sent in doc:
+                        yield gensim.models.doc2vec.LabeledSentence(sent,tags=[doi])
                 else:
                     pass
         else:
-            for doi in from_list:
+            for doi in self.from_list:
                 doc=self.source.find_one({'doi':doi})['doc']
                 ind+=1
                 if ind%1000==0:
@@ -225,6 +229,9 @@ class BlueberryIter(DocumentIter):
                         yield sent
                 elif self.iter_type=='DOI':
                     yield {'doi':record['doi'],'doc':doc}
+                elif self.iter_type=='LABELED_SENTENCES':
+                    for sent in doc:
+                        yield gensim.models.doc2vec.LabeledSentence(sent,tags=[doi])
                 else:
                     pass
         print('\n')
