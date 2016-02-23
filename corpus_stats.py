@@ -13,17 +13,28 @@ def plot_ziphian(zt,filename):
     plt.close()
     plt.plot(log_ranks,log_freqs,'r')
     plt.plot(log_ranks,line_freq,'b')
+    plt.xlabel('log(Word Rank)')
+    plt.ylabel('log(Word Frequency)')
     plt.savefig(filename)
     print('Saved Ziphian Plot')
     plt.close()
     
 def plot_doc_length_distro(counter, filename):
     plt.plot(counter.keys(),counter.values(),'o')
+    xs=np.linspace(min(counter.keys()),max(counter.keys()),1000)
+    ys=map(lambda x:doc_len_distro(x),xs)
+    plt.plot(xs,ys,'r')
+    plt.xlabel('Document Word Count')
+    plt.ylabel('Frequency')
     plt.savefig(filename)
     plt.close()
     print('Saved Document Length Distribution Plot')
 
+def doc_len_distro(x):
+    return 5.991524457330881*x**2*math.exp(-0.00034375*x**2)
+
 def get_corpus_stats(doc_iter,outfile_name):
+    doc_iter.iter_type='SIMPLE'
     word_freq = Counter()
     word_count = 0
     document_count = 0
