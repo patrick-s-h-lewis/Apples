@@ -82,7 +82,7 @@ class JsonDiskIter(DocumentIter):
         for line in codecs.open(self.source,'r',encoding='utf8'):
             record = json.loads(line)
             title = record['title']
-            abstract_sents = record['abstract']
+            abstract_sents = record['abstract'].split('. ')
             ind+=1
             doc =[]
             if ind%1000==0:
@@ -100,6 +100,9 @@ class JsonDiskIter(DocumentIter):
                     yield sent
             elif self.iter_type=='DOI':
                 yield {'doi':record['doi'],'document':doc}
+            elif self.iter_type=='EVERYTHING':
+                record['doc']=doc
+                yield record
             else:
                 pass
         print('\n')
@@ -262,7 +265,7 @@ class JsonBlueberryIter(DocumentIter):
         for line in codecs.open(self.source,'r',encoding='utf8'):
             record = json.loads(line)
             doi = record['doi']
-            doc = record['record']
+            doc = record['doc']
             ind+=1
             if ind%1000==0:
                 progress(ind,self.size)
@@ -275,10 +278,80 @@ class JsonBlueberryIter(DocumentIter):
                     yield sent
             elif self.iter_type=='DOI':
                 yield {'doi':record['doi'],'doc':doc}
+            elif self.iter_type=='EVERYTHING':
+                yield record
             elif self.iter_type=='LABELED_SENTENCES':
                 for sent in doc:
                     yield gensim.models.doc2vec.LabeledSentence(sent,tags=[doi])
             else:
                 pass
         print('\n')
+        
+class StrawberryIter(DocumentIter):
+    size=0
+    source=''
+    sanitiser=None
+    iter_type='SIMPLE'
+    
+    def __init__(self,db_conn,query=None,sanit=None,iter_type='SIMPLE',from_list=None):
+        if sanit:
+            self.sanitiser=sanit
+        else:
+            self.sanitiser=sanitisers.NullSanitiser()
+        self.source=MongoClient(db_conn[0])[db_conn[1]][db_conn[2]]
+        self.query=query
+        self.size=self.source.find(query).count()
+        self.iter_type=iter_type
+        self.from_list=from_list
+    
+    def __iter__(self):
+        ind=0
+        if self.from_list==None:
+            for record in self.source.find(self.query):
+                doc = record['doc']
+                doi = record['doi']
+                ind+=1
+                if ind%1000==0:
+                    progress(ind,self.size)
+                if self.iter_type=='DOC':
+                    yield doc
+                elif self.iter_type=='SIMPLE': 
+                    yield [word for sent in doc for word in sent]
+                elif self.iter_type=='SENTENCES':
+                    for sent in doc:
+                        yield sent
+                elif self.iter_type=='DOI':
+                    yield {'doi':record['doi'],'doc':doc}
+                elif self.iter_type=='LABELED_SENTENCES':
+                    for sent in doc:
+                        yield gensim.models.doc2vec.LabeledSentence(sent,tags=[doi])
+                elif self.iter_type=='VECTORS':
+                    yield {'doi':doi,'vectors':record['vectors']}
+                else:
+                    pass
+        else:
+            for doi in self.from_list:
+                doc=self.source.find_one({'doi':doi})['doc']
+                ind+=1
+                if ind%1000==0:
+                    progress(ind,self.size)
+                if self.iter_type=='DOC':
+                    yield doc
+                elif self.iter_type=='SIMPLE': 
+                    yield [word for sent in doc for word in sent]
+                elif self.iter_type=='SENTENCES':
+                    for sent in doc:
+                        yield sent
+                elif self.iter_type=='DOI':
+                    yield {'doi':record['doi'],'doc':doc}
+                elif self.iter_type=='LABELED_SENTENCES':
+                    for sent in doc:
+                        yield gensim.models.doc2vec.LabeledSentence(sent,tags=[doi])
+                else:
+                    pass
+        print('\n')
+
+    def get_record(self,doi):
+        return self.source.find_one({'doi':doi})  
+
     

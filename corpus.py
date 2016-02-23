@@ -47,7 +47,7 @@ class Corpus(object):
         if self.tfidf_model==None:
             self.tfidf_model=self.get_tfidf_model()
         with codecs.open(self.name+filename,'w',encoding='utf8') as f:
-            self.doc_iter.iter_type='DOI'
+            self.doc_iter.iter_type='EVERYTHING'
             for doc in self.doc_iter:
                 doc_weights=[]
                 sent_weights=[]
@@ -64,7 +64,8 @@ class Corpus(object):
                     sent_tfdict={k[0]:k[1] for k in sent_tfidf}
                     weight=[sent_tfdict[self.inv_dict[word]] for word in sent]
                     sent_weights.append(weight)
-                ex = json.dumps({'doi':doc['doi'],'tfidf-doc-weights':doc_weights,'tfidf-sent-weights':sent_weights})
+                doc['tfidf-weights']={'doc-weights':doc_weights,'tfidf-sent-weights':sent_weights}
+                ex = json.dumps(doc)
                 f.write(ex+'\n')
         print('EXPORT COMPLETE')
     
