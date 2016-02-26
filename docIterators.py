@@ -306,7 +306,7 @@ class StrawberryIter(DocumentIter):
     
     def __iter__(self):
         ind=0
-        if self.from_list==None:
+        if self.from_list is None:
             for record in self.source.find(self.query):
                 doc = record['doc']
                 doi = record['doi']
@@ -331,10 +331,11 @@ class StrawberryIter(DocumentIter):
                     pass
         else:
             for doi in self.from_list:
-                doc=self.source.find_one({'doi':doi})['doc']
+                record=self.source.find_one({'doi':doi})
+                doc=record['doc']
                 ind+=1
-                if ind%1000==0:
-                    progress(ind,self.size)
+                if ind%10==0:
+                    progress(ind,len(self.from_list))
                 if self.iter_type=='DOC':
                     yield doc
                 elif self.iter_type=='SIMPLE': 
@@ -347,6 +348,8 @@ class StrawberryIter(DocumentIter):
                 elif self.iter_type=='LABELED_SENTENCES':
                     for sent in doc:
                         yield gensim.models.doc2vec.LabeledSentence(sent,tags=[doi])
+                elif self.iter_type=='VECTORS':
+                    yield {'doi':doi,'vectors':record['vectors']}
                 else:
                     pass
         print('\n')
